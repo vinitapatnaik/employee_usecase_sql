@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="retrivedatafromDB" doc:id="46f6a46a-5e0d-4939-932b-6e4e12491b5f" >
+		<http:listener doc:name="recieve the request from prc api" doc:id="a1fdb382-bee1-41ab-b028-d4804cd2460c" config-ref="HTTP_Listener_config" path="/db"/>
+		<logger level="INFO" doc:name="Log the initial request" doc:id="7fc6953e-7b0c-4d42-971f-8cf45a475508" />
+		<db:select doc:name="retrieve employee data from mysql" doc:id="a42f8145-72ef-4e3c-b56b-a0d8f72b1254" config-ref="Database_Config">
+			<reconnect count="3" />
+			<db:sql ><![CDATA[Select * from employee]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform the data received from DB" doc:id="24117f6f-11fe-4371-a304-0a78d2b43ece" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	empid: payload01.empid,
+	empname: payload01.empname,
+	empdesignation: payload01.empdesig,
+	empskill: payload01.empskill,
+	lastdatetime: payload01.lastdatetime >> 'IST'
+	
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="transformed payload" doc:id="275df1c9-f0e9-42f4-b36c-d236597378e2" message="#[payload]"/>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="c7d0f66c-a809-4dd6-a5e2-d9331459bfb8" type="DB:CONNECTIVITY">
+				<logger level="INFO" doc:name="Logger" doc:id="9ffc4093-1f1c-4613-a96e-64e80b365323" message="Error while connecting to database"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>
